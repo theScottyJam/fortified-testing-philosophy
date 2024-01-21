@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Fortified Testing Philosophy</title>
+  <link rel="stylesheet" href="../../style.css">
+  <script type="module">
+    document.addEventListener('DOMContentLoaded', () => {
+      const headers = document.querySelectorAll('main :where(h1, h2, h3, h4, h5)[id]')
+      for (const header of headers) {
+        const link = document.createElement('a');
+        link.href = '#' + header.id;
+        link.innerText = '#';
+        link.classList.add('anchor-link')
+        header.appendChild(link);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="header-background">
+    <div class="header-background-pattern-crop">
+      <div class="header-background-pattern"></div>
+    </div>
+    <div class="header-background-fade-gradient"></div>
+    <div class="header-background-shadow"></div>
+  </div>
+  <main>
+    <h1>The Fortified Testing Philosophy</h1>
+
+    <h2 id="mission-statement">Mission Statement</h2>
+
+    <p>
+      Construct your test suite such that it is fortified against internal and external changes to your system (allowing such code changes to happen with minimal changes to your tests), while at the same time ensuring your test suite provides a strong level of confidence in the accuracy of your code.
+    </p>
+
+    <h2 id="about-this-philosophy">About This Philosophy</h2>
+
+    <p>
+      This philosophy's mission statement can be achieved by following a number of good practices and guidelines that are outlined in detail in this document, which are as follows:
+    </p>
+
+    <ul>
+      <li><a href="#most-code-would-benefit-from-automated-tests">Most Code Would Benefit from Automated Tests</a></li>
+      <li><a href="#avoid-testing-private-functions">Avoid Testing Private Functions</a></li>
+      <li><a href="#dont-let-your-sut-be-too-small">Don't Let Your SUT Be Too Small</a></li>
+      <li><a href="#dont-let-your-sut-be-too-large">Don't Let Your SUT Be Too Large</a></li>
+      <li><a href="#dry-your-tests-when-appropriate">DRY Your Tests When Appropriate</a></li>
+      <li><a href="#consider-testing-shared-logic-through-a-single-public-function">Consider Testing Shared Logic Through a Single Public Function</a></li>
+      <li><a href="#test-through-your-isolation-boundaries">Test Through Your Isolation Boundaries</a></li>
+      <li><a href="#prefer-fakes-over-stubs-and-mocks">Prefer Fakes Over Stubs and Mocks</a></li>
+      <li><a href="#prefer-arranging-and-asserting-with-public-apis">Prefer Arranging and Asserting with Public Apis</a></li>
+      <li><a href="#dont-over-assert">Don't Over-Assert</a></li>
+      <li><a href="#combine-unit-and-integration-tests">Combine Unit and Integration Tests</a></li>
+    </ul>
+
+    <p>
+      Some things to keep in mind about this document:
+    </p>
+
+    <ul>
+      <li>This document focuses primarily on unit and integration tests. Other types of testing can be important as well but are out of the scope of this document.</li>
+      <li>The guidelines presented in this document are interconnected. Some of the suggestions presented become less effective, or may even be counter-productive if not paired with the other suggestions.</li>
+      <li>Many of these guidelines operate under the assumption that your public API will need to remain stable while internal details need to be free to change - in projects where this assumption isn't entirely accurate, you may need to modify or ignore various guidelines.</li>
+    </ul>
+
+    <h2 id="definitions">Definitions</h2>
+
+    <p>
+      There are, unfortunately, many valid ways to define automated testing-related terminology. For the purpose of this document, the following definitions will be used.
+    </p>
+
+    <ul>
+      <li id="aaa-definition"><strong>AAA (Arrange Act Assert):</strong> Tests are generally formed with an "arrange" section (which gets dependencies ready, stubs things out, etc), then an "act" section (which runs the code you are trying to test), followed by an "assert" section (which checks for an expected outcome). This Fortified Testing Philosophy does not explicitly require you to follow AAA, but it will still use terms such as "arrange", "act", and "assert" to describe different aspects of your automated tests.</li>
+      <li id="sut-definition"><strong>SUT (System Under Test):</strong> The code you are trying to validate with a specific automated test. Only the code being run in the "act" phase of your test is part of the SUT.</li>
+      <li id="incidental-stability-definition"><strong>Incidental stability:</strong> Each test should be designed to verify that a single, desired behavior can be found in the codebase. Unfortunately, it's not always possible or practical to test for individual behaviors in isolation, for example, to trigger a particular behavior, you may be required to exercise other, unrelated behaviors that are already being covered by other automated tests. This is effectively causing you to "double test" a specific behavior, adding what we will call "incidental stability" to that behavior. Having too much incidental stability on a single behavior will make it difficult to change that behavior in the future.</li>
+      <li id="module-definition"><strong>Module:</strong> The exports from a single source code file.</li>
+      <li id="unit-test-definition"><strong>Unit test:</strong> An automated test that is isolated from external systems (such as the file system or the internet). It is good practice to have your unit tests isolated from each other as well, allowing them to run in any order. Unit tests are valuable because they run fast and have reliable behavior (since they don't depend on potentially flakey external systems). There are no size restrictions on how big your "unit" is under test (i.e. the size of your SUT) - it could be a single function, but often it will be many modules working together.</li>
+      <li id="integration-test-definition"><strong>Integration test:</strong> Integration tests come in two flavors which we will term "internally integrated" and "externally integrated". 1. An automated test that touches external resources (such as the file system or the internet) is an externally-integrated test. These tests are slower, but provide a higher level of confidence in your code compared to unit tests. An externally-integrated test is still allowed to have some degree of isolation done to it (i.e. it may still use test doubles when needed). 2. If two pieces of your system are usually tested in isolation, but a few automated tests are designed to test across the isolation boundary, those tests can be considered internally integrated tests, as they're testing the integration between two components. If these internally-integrated tests don't interact with any external resources, then it is valid to also consider them unit tests. Unless otherwise specified, whenever the term "integration test" is used, it is referring to externally-integrated tests.</li>
+      <li id="test-double-definition"><strong>Test double:</strong> To prevent real code from running in an automated test, a "test double" can be swapped in, such as a stub, mock, or fake.</li>
+      <li id="stub-definition"><strong>stub:</strong> A test double with "canned", pre-programmed responses.</li>
+      <li id="mock-definition"><strong>mock:</strong> A stub that additionally records how its functions get called so you can assert against it. The way you use the test double matters - if your test double records how it gets used, but a particular test never writes an assertion against that information, then for the purposes of that test, this test double is a stub, not a mock.</li>
+      <li id="fake-definition"><strong>fake:</strong> A type of test double that has fake behaviors associated with it to mimic the real thing. For example, you may create a fake that provides an in-memory CRUD-API, which can stand in for what would normally be a real database.</li>
+    </ul>
+
+    <details>
+      <summary>Examples of incidental stability</summary>
+      <div>
+        <p>
+          The following examples demonstrate ways in which you may accrue incidental stability if you are not careful. This list of examples should not be taken as an exhaustive containing all of the ways in which you can accrue incidental stability. If the amount of incidental stability accrued is going to be an issue, then you can use techniques such as those found in the following sections to help mitigate the problem.
+        </p>
+
+        <ul>
+          <li><a href="#dont-let-your-sut-be-too-large">Don't Let Your SUT Be Too Large</a></li>
+          <li><a href="#dry-your-tests-when-appropriate">DRY Your Tests When Appropriate</a></li>
+          <li><a href="#consider-testing-shared-logic-through-a-single-public-function">Consider Testing Shared Logic Through a Single Public Function</a></li>
+        </ul>
+
+        <p>
+          Incidental stability can happen in the arrange section of your tests. If your codebase writes audit information to a log file, you may find yourself stubbing out the file-write function in a large number of your tests. Each time you stub out the file-write function, you add incidental stability to the "audit information gets written out to a file" behavior. If, later, you need to instead send audit information to an external service via network requests, you may find yourself doing a lot of work to update your tests due to how stable this behavior has become.
+        </p>
+
+        <p>
+          Incidental stability can happen in the act section of your tests. Say you've written many tests for a "create user" function, and all of these tests explicitly supply a required full name field. Later, things change and you need to be able to accept the "first name" and "last names" as separate inputs instead of having them combined into a single "full name" field. Every test that explicitly supplied the full name field will now have to be updated.
+        </p>
+
+        <p>
+          As a second example of incidental stability in your test's act section - consider the scenario where you have a number of tests that verify that various password policies are in force when you use the create-user function - these all add incidental stability to the fact that you can supply a password during user-creation in the first place. Separating the set-password action into its own endpoint would require you to spend lots of extra work updating tests as well.
+        </p>
+
+        <p>
+          Incidental stability can happen in the assert section of your tests. Perhaps you coded up the handling of 4xx and 5xx errors in your REST API using a single shared helper function that returns consistent headers, such as `Content-Type: application/json`, If many of your tests explicitly assert that the response's Content-Type is application/json, then you're adding a lot of incidental stability to this shared behavior.
+        </p>
+      </div>
+    </details>
+
+    <h2 id="most-code-would-benefit-from-automated-tests">Most Code Would Benefit from Automated Tests</h2>
+
+    <blockquote>
+      [Ensure] your test suite provides a strong level of confidence in the accuracy of your code.
+    </blockquote>
+
+    <p>
+      Reaching a "strong level of confidence" means having an automated test for nearly every public behavior of your system. What constitutes a "behavior" is very much open for interpretation and will need to be decided on a case-by-case situation, but here are some guidelines:
+    </p>
+
+    <ul>
+      <li>Ensure your "sad paths" get tested as well as your "happy paths".</li>
+      <li>Nearly all code you write (with few exceptions) should be exercised by automated tests.</li>
+      <li>Don't overdo it. If every single function that takes a float parameter has a separate test for a really large number, a really small number, a negative number, zero, negative zero, infinity, NaN, etc, then you've overdone it. Yes, these are all nice things to have tested, but it is simply not worth the maintenance effort.</li>
+    </ul>
+
+    <p>
+      There are valid reasons you may choose to not write automated tests for a piece of code:
+    </p>
+
+    <ul>
+      <li>Code that's never supposed to execute, but exists to make debugging easier if something goes wrong. Assertions are a good example of this (e.g. <code>if &lt;this should never be true&gt; then &lt;throw a fatal error&gt; end</code>).</li>
+      <li>Race condition handling - while it's technically possible to write automated tests for these, such tests tend to be highly coupled to how the code is currently built, and thus results in tests that can easily become obsolete if the internal details change.</li>
+      <li>If there are a lot of side effects and relatively little branching logic (like you would see in many shell scripts), it might not be worth unit testing. If reasonable, it would still be a good idea to find ways to write integrated tests for such logic.</li>
+      <li>When your unit tests swap out real code that interacts with the outside world with a <a href="#test-double-definition">test double</a>, that real code might not ever get unit-tested. If possible, it would still be a good idea to write integration tests for this logic.</li>
+    </ul>
+
+    <p>
+      Strive to keep the amount of code in these non-test-friendly regions minimal. Sometimes there are chunks of logic that can be moved out into other locations that are easier to test, such as extracting out pure functions that are then put under test, or moving logic from the non-test-friendly zone to whoever is triggering the execution of the non-test-friendly zone.
+    </p>
+
+    <details>
+      <summary>Notes on code coverage tools</summary>
+      <div>
+        <p>
+          Configuring a code coverage tool for your project can be an optional, but helpful way to make sure you don't have any glaring holes in your test coverage. They're not perfect - they can't tell you if every behavior is tested that should be tested, but they can still be useful in pointing out larger issues.
+        </p>
+
+        <p>
+          If you do choose to use a code coverage tool, consider configuring it to require 100% line coverage. You won't actually be required to get 100% of your lines of code under test, instead, if you feel that a piece of code should not be tested, simply inform your code coverage tool to turn a blind eye to that piece of code (typically this is done through a special "ignore" comment). When placing a comment like this, you may also consider placing an additional comment down explaining why you're choosing to omit tests for this piece of code. This means you're not really achieving 100% test coverage, instead, what you're actually achieving is "100% of your lines of code is either tested, or explicitly marked as not needing to be tested".
+        </p>
+
+        <p>
+          Unfortunately, not all code coverage tools support exclude-style comments. How to proceed under such limitations is up to you and your team, but you may want to consider the option of just avoiding the code coverage tool altogether if such a feature is not available to you. Using any coverage requirement other than 0% or 100% is unfortunately not a very effective alternative as the feedback loop is much too large, i.e. one developer forgetting to test some code may not manifest as an issue until another developer is working in the code and need to intentionally leave a few lines of code untested.
+        </p>
+
+        <p>
+          Additionally, don't hesitate to disable branch coverage completely if you find it to be too much of a burden. While in principle it sounds nice to have automated tests for every single branch, in practice it can take a fair number of extra tests to cover every single optional parameter, boolean logic short-circuit, etc. These types of tests tend to not be overly useful (they don't add a ton of additional confidence that your code is working correctly), and it can be a burden to maintain them all.
+        </p>
+      </div>
+    </details>
+    
+  <h2 id="avoid-testing-private-functions">Avoid Testing Private Functions</h2>
+
+  <p>
+    Avoid writing tests for private functions. Figure out how the private function affects the public API, then test the behavior through the public API instead. Remember that this is just a guideline, there are scenarios where it may be preferable to write tests against private functions, such as when the private behaviors are actually more stable than what gets seen through the public API.
+  </p>
+    
+  <details>
+    <summary>More context on why you might wish to test a private function directly</summary>
+    <div>
+      <p>
+        Consider a program that gathers information from various types of devices, then combines all of that information together to make a guess as to what the temperature will be like tomorrow. The private function that averages data from various temperature and wind probes should always give the same output when given the same input, but the overall temperature-estimating function's public behavior may change often depending on what heuristics are added or removed from it. In this case, the behavior of the private functions is actually more stable than the public API, which means if you want your tests to stay stable, it would be preferable to tie them to the private functions (perhaps with a comment next to the private function explaining that it is getting used by an automated test, as a hint to future maintainers that this function's API can't be freely refactored without breaking tests).
+      </p>
+
+      <p>
+        It's sometimes argued that if you feel the need to test a private function, perhaps it's better to move that private function into a different module and make it public. This is certainly a valid option as well, but it shouldn't be considered the only option. Sometimes you just want to keep the private function private, and that's fine.
+      </p>
+    </div>
+  </details>
+
+  <h2 id="dont-let-your-sut-be-too-small">Don't Let Your SUT Be Too Small</h2>
+
+  <p>
+    An unfortunate common pattern is to treat every <a href="#module-definition">module</a> (or class) as its own "unit", isolating all modules from each other. Unit testing like this can be extremely unhealthy for your project, and it violates both sides of the mission statement:
+  </p>
+
+  <ol>
+    <li>It fails to be fortified against internal changes in your system. Almost by definition, we are adding unnecessary stability for every internal module/class of the system, which in turn makes it hard to make any meaningful changes to the system. Every time you want to move logic from one place to another, or divide a module in two, or join two modules, etc, you will also need to fix many tests that broke as a result of these changes.</li>
+    <li>It fails to provide a high degree of confidence in your code, as the units being tested are simply too small. There's little value in creating automated tests for pieces of code that are overly small, considering the fact that executing those pieces of code by hand whenever you change them is always an option as well. Unit tests work best when they're verifying the behavior of larger components of your system, and making sure that all of those small pieces fit together the way they need to.</li>
+  </ol>
+
+  <p>
+    While it's less common to see this issue with integration tests, the same advice still applies to it. If the SUTs for your integration tests are overly small, they won't be as effective as they could be.
+  </p>
+
+  <h2 id="dont-let-your-sut-be-too-large">Don't Let Your SUT Be Too Large</h2>
+
+  <p>
+    While it's true that individual <a href="#module-definition">modules</a> and classes generally don't need to be tested in isolation from each other, that doesn't mean that no isolation should happen at all. For larger applications, it may be valuable to divide up your application into "components", and then test each component in isolation from each other, using test doubles to prevent a SUT from ever passing through multiple components. How big or small a component should be can be a difficult question to answer, but here are some guidelines:
+  </p>
+
+  <ul>
+    <li>Could you envision a plausible future where a chunk of code becomes separated into a different project in the future? If so, you may wish to keep that chunk in its own component. Doing such a split may be very difficult in the future if your SUTs are constantly crossing this boundary you wish to split at.</li>
+    <li>Does a large portion of your application depend upon a specific operation (such as audit logging or analytics)? If so, you'll probably want to keep that operation in its own component. If you don't, you may end up with a lot of <a href="#incidental-stability-definition">incidental stability</a> on the specific details of how this shared behavior works, making it difficult to ever make changes to the shared behavior.</li>
+  </ul>
+
+  <p>
+    When in doubt, use a larger SUT.
+  </p>
+
+  <details>
+    <summary>An example of a SUT that is too large</summary>
+    <div>
+      <p>
+        If a large portion of your codebase participates in audit logging, you may want to have tests in place to make sure the correct things get logged when they should. However, if each of these tests are mocking out an API for writing to the file system, then you are going to be in trouble if you ever need to change the way the audit logs are saved (e.g. what happens if you need to save them over the internet instead, or if you simply want to make the writes throttled, which in turn requires each test to additionally do some timing-based mocking?) While it's true that you want some unit testing around how you write your audit logs out to disk, you don't want every audit-log-related test to be verifying that audit logs get saved to disk - that's putting way too much incidental stability on a single concept. In this scenario, it may be best to shrink the size of your SUT a bit, so you only verify that audit-log messages are being sent to some audit-log handler component, and then have a separate set of tests to make sure the audit-log handler behaves as it should (e.g. it actually writes incoming messages out to a log file).
+      </p>
+    </div>
+  </details>
+
+  <h2 id="dry-your-tests-when-appropriate">DRY Your Tests When Appropriate</h2>
+
+  <p>
+    Shrinking your SUT isn't the only way to reduce <a href="#incidental-stability-definition">incidental stability</a>. If many of your tests are adding incidental stability to a single behavior, you may choose to move the dependency on that behavior into a single helper function, and then have all of your tests depend on the helper function instead. If the behavior needs to change, you now only need to update your helper function.
+  </p>
+
+  <p>
+    Don't overdo it. A little incidental stability is fine and is often preferable to the added complexity that comes from DRYing your code.
+  </p>
+
+  <details>
+    <summary>Additional notes on DRY tests and readability</summary>
+    <div>
+      <p>
+        A good metric to decide what goes in a shared helper function and what doesn't is to look at the specific behavior you're trying to test, then figure out what content in your test is strongly correlated with that behavior, and what content is just "plumbing". Moving the plumbing out into helper functions can help reduce the noise in your test and make its intent more clear, however, you (usually) want to be careful not to also put the essential pieces of your test into helper functions.
+      </p>
+
+      <p>
+        For example, if you wish to test a function that fetches data from a REST endpoint, transforms it, and returns it, and you wish to assert that various pieces of information are present in the returned data, make sure it's clear why those assertions are asserting the values they assert. If they assert that a "name" property is set to "Sally", then you probably want to make sure that, when arranging your test, you also use the word "Sally" somewhere, instead of having that abstracted away into your helper functions.
+      </p>
+
+      <p>
+        One good way to help reduce plumbing is to avoid the "beforeEach()" hook in your tests. The problem with "beforeEach()" is that it can't be parameterized - it will always run the exact same setup logic for all of your tests. A better alternative is to have a shared "init()" function that each test explicitly calls. If the tests need to customize certain setup behaviors, they can pass in the necessary configuration into the "init()" function.
+      </p>
+      </p>
+    </div>
+  </details>
+
+  <h2 id="consider-testing-shared-logic-through-a-single-public-function">Consider Testing Shared Logic Through a Single Public Function</h2>
+
+  <p>
+    If multiple parts of your public API depend on the same shared behavior, instead of extensively retesting that behavior through every public function that has it, consider picking just one public function to do the extensive testing through. The rest of the public functions can have one or two tests to verify that the shared behavior is present, but they don't all need to do extensive testing of the same behavior.
+  </p>
+
+  <details>
+    <summary>Some notes on organization</summary>
+    <div>
+      <p>
+        If your organize your tests by creating a separate test file for each public module, it might be worthwhile to break that convention when dealing with these sorts of tests for shared behavior. While it's true that you are testing through a single function, the purpose of these tests isn't to verify the behavior of just that one function, rather, it's to verify a behavior shared by many functions, it just happens to be using one function to do it. For this reason, it may make more sense to move these tests into their own file, named after the behavior they're trying to test.
+      </p>
+    </div>
+  </details>
+
+  <h2 id="test-through-your-isolation-boundaries">Test Through Your Isolation Boundaries</h2>
+
+  <p>
+    Any time you make a test boundary that separates one area of your codebase from another during unit testing, it's a good idea to have a few <a href="#integration-test-definition">internally-integrated</a> tests that cross the boundary, just to make sure you don't have any bugs at the boundary itself. It's important to not overdue your boundary testing - such tests tend to require more maintenance effort and may break easier, which is why the boundary was put there in the first place.
+  </p>
+
+  <h2 id="prefer-fakes-over-stubs-and-mocks">Prefer Fakes Over Stubs and Mocks</h2>
+
+  <p>
+    When it's possible and it's not too much work, it is preferable to create and use fakes in your tests instead of stubs. This is because every time you use a stub, you're tying your test to an internal detail (i.e. how your codebase interacts with the stub and what it expects the stub to return), and if those internal details change, you'll have to additionally update many individual tests. If, instead, you used fakes, the only thing you'd need to update is the fake, and everything will just work.
+  </p>
+
+  <h2 id="prefer-arranging-and-asserting-with-public-apis">Prefer Arranging and Asserting with Public Apis</h2>
+
+  <p>
+    If you're trying to test the behavior of one public function, that doesn't mean you can't use other public functions to help arrange your test or assert conditions, in fact, it's encouraged. Using public APIs when arranging and asserting moves <a href="#incidental-stability-definition">incidental stability</a> from internal APIs (the APIs of your test doubles), to your more stable external APIs. It is also necessary to test in this format if you wish to make your unit test double as an integration test, as integration tests rely on public APIs much more.
+  </p>
+
+  <p>
+    This isn't a hard rule. There are times when you may want to intentionally add some stability to the internals of your system, for example, you may want to write assertions related to how your data is getting saved, to prevent accidental changes to the shape of the stored data.
+  </p>
+
+  <details>
+    <summary>Concrete example</summary>
+    <div>
+      <p>
+        If you wish to test a "deleteUser()" function, you could first call your public "createUser()" function to add a user to the system, then your "deleteUser()" function to delete them, and finally a "getUser()" function, to make sure they aren't found anymore.
+      </p>
+    </div>
+  </details>
+
+  <h2 id="dont-over-assert">Don't Over-Assert</h2>
+
+  <p>
+    Avoid unnecessarily asserting for the same behavior in multiple tests - it is redundant and unnecessarily adds incidental stability to that behavior.
+  </p>
+
+  <details>
+    <summary>Concrete example</summary>
+    <div>
+      <p>
+        If your createUser() function sends out an email on user-creation, and your unit test is replacing that behavior with a test double, don't make every test for createUser() replace it with a mock (i.e. don't assert that an email got sent out with the correct information in every test). Create a few tests that are dedicated to verifying that email sending is working correctly (by asserting that the correct parameters are passed into the mock). The rest of the tests can stub out the email-verification function if needed, but they need not assert that the correct parameters are passed into it, that is already covered.
+      </p>
+    </div>
+  </details>
+
+  <h2 id="combine-unit-and-integration-tests">Combine Unit and Integration Tests</h2>
+
+  <p>
+    Many unit tests can be, with a little bit of effort, reused as integration tests. Doing so makes it fairly easy to build up a strong collection of integration tests. The technique works as follows:
+  </p>
+
+  <ul>
+    <li>You'll need to provide a way to run your test suit in "unit test mode" and "integration test mode".</li>
+    <li>While many of your tests may be able to run in both unit test and integration test mode, some of them may only support one mode or the other - you will need a way to keep them from running if the currently chosen mode is not supported.</li>
+    <li>In integration test mode, you may need to do some additional setup before your test suit kicks off, as well as additional cleanup logic after your tests finish running, such as starting up and shutting down your server.</li>
+    <li>Prefer writing your tests so they don't directly depend on the entry points of your application, instead, they will send requests through a "federator" whose behavior will change depending on if you are in unit test mode or integration test mode. For example, you might use a `sendRequest()` function inside of your tests. In unit test mode, the `sendRequest()` function will find the controller associated with the provided URL and call the controller callback directly. In integration test mode, `sendRequest()` will instead send an actual request to your locally running server.</li>
+    <li>Adjust the way your tests interact with external dependencies depending on the test mode they are in. For example, your test code might register a test double as a replacement for a database dependency. In unit test-mode, your code will use the test double instead of the real implementation. In integration-test mode, the real implementation can be used instead (if possible).</li>
+    <li>Logic that branches to different code paths depending on which test mode you are in should preferably be found inside of the tools your tests use, as opposed to being found within the tests themselves</li>
+  </ul>
+
+  </main>
+</body>
+</html>

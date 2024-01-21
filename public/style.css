@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700&family=Nunito:ital,wght@0,400;0,700;1,400&family=Sometype+Mono&display=swap');
+
+body {
+  background: #dddfdd;
+  margin: 0;
+  font-family: Nunito, sans-serif;
+  font-size: 1.1em;
+  --colored-text: #040;
+  --main-content-hoz-margin: 40px;
+  --text-indent: 2.2em;
+  --mobile-text-indent: 1.4em;
+  @media only screen and (max-width: 700px) {
+    --main-content-hoz-margin: 20px;
+  }
+}
+
+/* -- Markup Styles -- */
+
+h1 {
+  font-size: 2.2em;
+  @media only screen and (max-width: 700px) {
+    font-size: 1.5em;
+    margin-bottom: 1.2em;
+    letter-spacing: 0.04em;
+  }
+}
+
+h2 {
+  @media only screen and (max-width: 700px) {
+    font-size: 1.3em;
+  }
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: 'Manrope', sans-serif;
+  color: var(--colored-text);
+}
+
+:where(h1, h2, h3, h4, h5) .anchor-link {
+  text-decoration: none;
+  margin-left: 0.4em;
+  font-size: 0.8em;
+  color: #cdc;
+  &:visited {
+    color: #cdc;
+  }
+  &:hover {
+    color: #88a288;
+  }
+}
+
+a {
+  color: var(--colored-text);
+}
+
+a:visited {
+  color: revert;
+}
+
+blockquote {
+  font-style: italic;
+  padding-left: var(--text-indent);
+  @media only screen and (max-width: 450px) {
+    padding-left: var(--mobile-text-indent);
+  }
+}
+
+code {
+  font-family: 'Sometype Mono', monospace;
+  background: #eef1ee;
+}
+
+strong {
+  color: var(--colored-text);
+}
+
+ul, ol {
+  padding-left: var(--text-indent); 
+  @media only screen and (max-width: 450px) {
+    padding-left: var(--mobile-text-indent);
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+}
+
+ul li {
+  text-indent: -0.8em;
+}
+
+ul li::before {
+  content: "• ";
+  color: var(--colored-text);
+}
+
+li {
+  margin-top: 0.4em;
+}
+
+details {
+  margin-top: 20px;
+}
+
+details > div {
+  background: #efe;
+  margin-left: calc(var(--main-content-hoz-margin) * -1);
+  margin-right: calc(var(--main-content-hoz-margin) * -1);
+  padding-left: var(--main-content-hoz-margin);
+  padding-right: var(--main-content-hoz-margin);
+  margin-top: 15px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* -- page container styles -- */
+
+.header-background {
+  --header-primary-color: #070;
+  --header-gradient-color: #160;
+  position: relative;
+  width: 100%;
+  height: 200px;
+  margin-bottom: -110px;
+  @media only screen and (max-width: 700px) {
+    margin-bottom: -70px;
+    height: 150px;
+  }
+  @media only screen and (max-width: 450px) {
+    margin-bottom: 0;
+    height: 15px;
+  }
+}
+
+.header-background-pattern-crop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  overflow: hidden;
+  @media only screen and (max-width: 450px) {
+    display: none;
+  }
+}
+
+.header-background-pattern {
+  width: 400%;
+  height: 600%;
+  margin-left: -120px;
+  background:
+    linear-gradient(115deg, transparent 75%, rgba(0,0,0,0.03) 75%) 0 0,
+    linear-gradient(245deg, transparent 75%, rgba(0,0,0,0.03) 75%) 0 0,
+    linear-gradient(115deg, transparent 75%, rgba(0,0,0,0.03) 75%) 14px -30px,
+    linear-gradient(245deg, transparent 75%, rgba(0,0,0,0.03) 75%) 14px -30px,
+    var(--header-primary-color);
+  background-size: 30px 60px;
+  transform: rotate(10deg);
+}
+
+.header-background-fade-gradient {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  background: linear-gradient(to left, var(--header-gradient-color) 20%, var(--header-primary-color) 60%, transparent);
+  @media only screen and (max-width: 450px) {
+    background: linear-gradient(to left, var(--header-gradient-color) 20%, var(--header-primary-color) 60%, var(--header-primary-color));
+  }
+}
+
+.header-background-shadow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  box-shadow: 0px -15px 15px -15px rgba(0, 77, 0, 0.5) inset;
+}
+
+main {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  --main-margin: 20px;
+  width: calc(100% - calc(var(--main-margin) * 2));
+  margin-left: var(--main-margin);
+  margin-right: var(--main-margin);
+  padding: 10px 0 40px;
+  margin: 0 auto;
+  margin-bottom: 200px;
+  background: white;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+  @media only screen and (max-width: 700px) {
+    margin-bottom: 80px;
+  }
+  @media only screen and (max-width: 450px) {
+    --main-margin: 0;
+    padding-bottom: 50px;
+    margin-bottom: 0;
+  }
+}
+
+main > * {
+  margin-left: var(--main-content-hoz-margin);
+  margin-right: var(--main-content-hoz-margin);
+}
