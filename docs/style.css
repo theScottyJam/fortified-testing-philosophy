@@ -204,3 +204,20 @@ main > * {
   margin-left: var(--main-content-hoz-margin);
   margin-right: var(--main-content-hoz-margin);
 }
+
+footer {
+  text-align: right;
+  --footer-color: #444;
+  color: var(--footer-color);
+  margin-right: 6px;
+  margin-bottom: 6px;
+  font-size: 0.8em;
+
+  & a {
+    color: var(--footer-color);
+  }
+
+  & a:visited {
+    color: var(--footer-color);
+  }
+}
